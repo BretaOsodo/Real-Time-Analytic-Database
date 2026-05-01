@@ -1,0 +1,7 @@
+FROM apache/druid:30.0.0
+
+# Download PostgreSQL JDBC driver
+ADD https://jdbc.postgresql.org/download/postgresql-42.7.3.jar /opt/druid/lib/postgresql-42.7.3.jar
+
+# Add PostgreSQL extension configuration
+RUN echo "druid.extensions.loadList=[\"postgresql-metadata-storage\"]" >> /opt/druid/conf/druid/cluster/_common/common.runtime.properties

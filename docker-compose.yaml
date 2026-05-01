@@ -1,3 +1,13 @@
+volumes:
+  metadata_data: {}
+  middle_var: {}
+  historical_var: {}
+  broker_var: {}
+  coordinator_var: {}
+  router_var: {}
+  druid_shared: {}
+
+
 services:
   kafka-controller:
     image: apache/kafka:3.8.1
@@ -65,12 +75,161 @@ services:
       KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER 
       KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
       KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka-controller:9093,2@kafka-controller-2:9093
-      KAFKA_GROUP-INITIAL_REBALANCE_DELAY_MS: 0
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
     depends_on:
       - kafka-controller
       - kafka-controller-2
     networks:
       - data_pipeline
+
+  #APACHE DRUID 
+  # 1. zookeeper 
+  zookeeper:
+    image: zookeeper:3.9
+    container_name: zookeeper
+    ports:
+      - "2181:2181"
+    environment:
+      - ZOO_MY_ID=1
+    healthcheck:
+      test: ["CMD", "bash", "-c", "echo ruok | nc localhost 2181"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      
+    networks:
+      - data_pipeline
+  
+  #4. postgress
+  postgres: 
+    container_name: postgres
+    image: postgres:16.0
+    ports:
+      - "5432:5432"
+    volumes:
+      - metadata_data:/var/lib/postgresql/data
+    environment:
+      - POSTGRES_PASSWORD=Kidathegreat058
+      - POSTGRES_USER=druid
+      - POSTGRES_DB=druid
+    networks:
+      - data_pipeline
+  
+  # 3. Cordinator 
+  coordinator:
+    image: druid-postgres:30.0.0
+    container_name: coordinator
+    volumes:
+      - druid_shared:/opt/shared
+      - coordinator_var:/opt/druid/var
+    depends_on:
+      - zookeeper
+      - postgres
+    ports:
+      - "8081:8081"
+    command: 
+      - coordinator 
+    env_file:
+      - environment
+    networks:
+      - data_pipeline
+    
+  #4. broker 
+  broker:
+    image: druid-postgres:30.0.0
+    container_name: broker
+    volumes:
+      - druid_shared:/opt/shared
+      - broker_var:/opt/druid/var
+    depends_on:
+      - zookeeper
+      - postgres
+      - coordinator
+    ports:
+      - "8082:8082"
+    command: 
+      - broker
+    env_file:
+      - environment
+    networks:
+      - data_pipeline
+  
+  #5. Historical
+  historical:
+    image: druid-postgres:30.0.0
+    container_name: historical
+    volumes:
+      - druid_shared:/opt/shared
+      - historical_var:/opt/druid/var
+    depends_on:
+      - zookeeper
+      - postgres
+      - coordinator
+    ports:
+      - "8083:8083"
+    command: 
+      historical
+    env_file:
+      - environment
+    networks:
+      - data_pipeline
+
+  #6. middlemanager 
+  middlemanager:
+    image: druid-postgres:30.0.0
+    container_name: middlemanager
+    volumes:
+      - druid_shared:/opt/shared
+      - middle_var:/opt/druid/var
+      - ./fix-sed.sh:/fix-sed.sh
+    depends_on:
+      - zookeeper
+      - postgres
+      - coordinator
+    ports:
+      - "8091:8091"
+      - "8100-8105:8100-8105"
+    env_file:
+      - environment
+    networks:
+      - data_pipeline 
+
+  #7. Router 
+  router:
+    image: druid-postgres:30.0.0
+    container_name: router
+    volumes:
+      - router_var:/opt/druid/var
+    depends_on:
+      - zookeeper
+      - postgres
+      - coordinator
+    ports:
+      - "8888:8888"
+    command: 
+      - router
+    env_file:
+      - environment
+    networks:
+      - data_pipeline
+
+  mysql:
+    container_name: mysql
+    image: mysql:8.0
+    ports:
+      - "3306:3306"
+    volumes:
+      - metadata_data:/var/lib/mysql
+    environment:
+      - MYSQL_ROOT_PASSWORD=rootpass
+      - MYSQL_DATABASE=druid
+      - MYSQL_USER=druid
+      - MYSQL_PASSWORD=Kidathegreat058
+    networks:
+      - data_pipeline
+  
+  
+
 networks:
   data_pipeline:
     driver: bridge
