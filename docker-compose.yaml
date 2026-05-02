@@ -117,7 +117,7 @@ services:
   
   # 3. Cordinator 
   coordinator:
-    image: druid-postgres:30.0.0
+    image: apache/druid:30.0.0
     container_name: coordinator
     volumes:
       - druid_shared:/opt/shared
@@ -136,7 +136,7 @@ services:
     
   #4. broker 
   broker:
-    image: druid-postgres:30.0.0
+    image: apache/druid:30.0.0
     container_name: broker
     volumes:
       - druid_shared:/opt/shared
@@ -156,7 +156,7 @@ services:
   
   #5. Historical
   historical:
-    image: druid-postgres:30.0.0
+    image: apache/druid:30.0.0
     container_name: historical
     volumes:
       - druid_shared:/opt/shared
@@ -176,8 +176,10 @@ services:
 
   #6. middlemanager 
   middlemanager:
-    image: druid-postgres:30.0.0
+    image: apache/druid:30.0.0
     container_name: middlemanager
+    command:
+      - middleManager
     volumes:
       - druid_shared:/opt/shared
       - middle_var:/opt/druid/var
@@ -196,7 +198,7 @@ services:
 
   #7. Router 
   router:
-    image: druid-postgres:30.0.0
+    image: apache/druid:30.0.0
     container_name: router
     volumes:
       - router_var:/opt/druid/var
@@ -212,19 +214,15 @@ services:
       - environment
     networks:
       - data_pipeline
-
-  mysql:
-    container_name: mysql
-    image: mysql:8.0
+  superset:
+    image: apache/superset:latest
+    container_name: superset
     ports:
-      - "3306:3306"
+      - "8088:8088"
     volumes:
-      - metadata_data:/var/lib/mysql
+      - ./superset-requirements.txt:/app/requirements-local.txt
     environment:
-      - MYSQL_ROOT_PASSWORD=rootpass
-      - MYSQL_DATABASE=druid
-      - MYSQL_USER=druid
-      - MYSQL_PASSWORD=Kidathegreat058
+      - SUPERSET_SECRET_KEY=your_secret_key_here
     networks:
       - data_pipeline
   

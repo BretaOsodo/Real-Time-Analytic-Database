@@ -4,7 +4,7 @@ import random
 import time
 import json 
 
-faker = Faker(['en_KE'])  #kenya Locale for realistic data 
+faker = Faker(['en_KE'])  #kenya Locale for realistic data
 Faker.seed(42)
 random.seed(42)
 
@@ -25,14 +25,14 @@ def generate_data():
 
 if __name__=='__main__':
     fake=Faker()
-    topic_name='ecommerece_data'
+    topic_name='ecommerce_data'
     producer=KafkaProducer(
         bootstrap_servers=['localhost:29092' , 'localhost:39092'],
         value_serializer=lambda v: json.dumps(v).encode('utf-8')
     )
     count = 0
 
-    while count < 500:
+    while count < 50:
         rec = generate_data()
         producer.send(topic_name,value=rec)
         count +=1
